@@ -23,7 +23,6 @@
 
 -- TODO Add accurate module dependecy versions in all cabal files
 
--- TODO Make everything ready for github deployment
 module Main (
     main
 ) where
@@ -93,37 +92,27 @@ main = do marshalled <- marshalArguments definedOptions
           createCfgFileIfMissing cfgFilepath
           extToComm  <- fmap getDefaultSection (readConfiguration cfgFilepath)
           extToComm2 <- removeExtensions extToComm extensionsBeRemoved
-          stopIf (null patterns) (putStrLn "no patterns given, exiting...")
+          exitIf (null patterns) (putStrLn "no patterns given, exiting...")
           setWorkingDirectory workingDirectory
           files      <- getFilepaths isRecursive fileFilterCondition
-          stopIf (null files) (putStrLn "no file matched the given patterns, exiting...")
+          exitIf (null files) (putStrLn "no file matched the given patterns, exiting...")
           sysCalls   <- associateCommands files extToComm2
           _ <- mapM system sysCalls
           return ()
-
-ss = catch (print $ 5 `div` 0) handler
-  where
-    handler :: SomeException -> IO ()
-    handler ex = putStrLn $ "Caught exception: " ++ show ex
 
 createCfgFileIfMissing :: String -> IO()
 createCfgFileIfMissing x =
   do fileExist <- doesFileExist x
      unless fileExist $ createCfgFile x
 
--- TODO clean this function
 createCfgFile :: String -> IO()
 createCfgFile x =
   do putStrLn "Configuration file does not exist\n\
               \Attempting to automatically create a new one"
-     h <- catch (openFile x WriteMode)
-                ((\e -> do putStrLn ("An exception was caught: " ++ show e)
-                           putStrLn "FATAL ERROR: Failed to create file"
-                           exitFailure) :: SomeException -> IO Handle)
+     h <- exitIfFailed (openFile x WriteMode) "Failed to create file"
      hClose h
      putStrLn ("A new configuration file was created in\n" ++ x)
      return ()
-
 
 removeExtensions :: [Property] -> [Extension] -> IO [Property]
 removeExtensions xs [] = return xs
@@ -170,14 +159,14 @@ queryCommand = do input <- getLine
                        (True, queryCommand)]
 
 
-
 run :: [(Bool, IO a)] -> IO a
 run []            = error ""
 run ((True, x):_) = x
 run (_:xs)        = run xs
 
 getCfgFilepath :: IO String
-getCfgFilepath = return "/home/tobias/show.conf"
+getCfgFilepath = do home <- exitIfFailed (getEnv "HOME") "Could not get environment variable HOME"
+                    return (home ++ "/.config/show.conf")
 
 getFilepaths ::  Bool -> (String -> Bool) -> IO [String]
 getFilepaths y f = if y
@@ -185,9 +174,13 @@ getFilepaths y f = if y
                    else getFilesWith f "."
 
 
-stopIf :: Bool -> IO a -> IO ()
-stopIf b x = when b $ do _ <- x; exitSuccess
+exitIf :: Bool -> IO a -> IO ()
+exitIf b x = when b $ do _ <- x; exitSuccess
 
+exitIfFailed :: IO a -> String -> IO a
+exitIfFailed f m = catch f ((\e -> do putStrLn ("An exception was caught: " ++ show e)
+                                      putStrLn ("FATAL ERROR: " ++ m)
+                                      exitFailure) :: SomeException -> IO a)
 
 getFileFilterCondition :: Bool -> [String] -> (String -> Bool)
 getFileFilterCondition True ys = containsPattern (map mkRegex ys)
