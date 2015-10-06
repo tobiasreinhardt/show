@@ -1,0 +1,29 @@
+name: IniConfiguration
+version: 0.0.1
+cabal-version: >=1.8
+build-type: Simple
+license: AllRightsReserved
+license-file: ""
+copyright: 2015 Tobias Reinhardt <tobioso92_@hotmail.com>
+maintainer: Tobias Reinhardt
+author: Tobias Reinhardt
+data-dir: ""
+
+
+
+library
+    build-depends: QuickCheck -any, base -any, deepseq -any,
+                   hspec -any, split -any
+    exposed-modules: IniConfiguration
+    exposed: True
+    buildable: True
+    hs-source-dirs: src tests
+    other-modules: Decoder Encoder Types Manipulation
+
+Test-Suite TestIniConfiguration
+    type:          exitcode-stdio-1.0
+    build-depends: base -any, deepseq -any,
+                   hspec -any, split -any
+    main-is: Main.hs
+    hs-source-dirs: src tests
+    other-modules: Main TestDecoder TestEncoder TestIniConfiguration IniConfiguration Encoder Decoder Types Manipulation
