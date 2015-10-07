@@ -76,8 +76,6 @@ definedOptions = [(r, None),
 
 type Extension = String
 
---TODO Check if the program throws an error whenewer an argument is not defined
-
 
 main :: IO ()
 main = do marshalled <- marshalArguments definedOptions
@@ -104,6 +102,9 @@ main = do marshalled <- marshalArguments definedOptions
           return ()
 
 
+
+
+
 createCfgFileIfMissing :: String -> IO()
 createCfgFileIfMissing x =
   do fileExist <- doesFileExist x
@@ -120,26 +121,24 @@ printExtToComm ((x1,x2):xs) =
 
 createCfgFile :: String -> IO()
 createCfgFile x =
-  do putStrLn "Configuration file does not exist\n\
-              \Attempting to automatically create a new one"
-     h <- exitIfFailed (openFile x WriteMode) "Failed to create file"
+  do putStrLn $ colorify yellow "Configuration file does not exist\n" ++
+               "Attempting to automatically create a new one..."
+     h <- exitIfFails (openFile x WriteMode) "Failed to create file"
      hClose h
-     putStrLn ("A new configuration file was created in\n" ++ x)
+     putStrLn $ colorify green ("A new configuration file was created in\n" ++ x)
      return ()
 
-
+-- TODO save the configuration after removing
 removeExtensions :: [Property] -> [Extension] -> IO [Property]
 removeExtensions xs [] = return xs
 removeExtensions xs (y:ys) =
   do let extToComm = removeProperty y xs
      if length extToComm == length xs
-       then do putStrLn ("WARNING: Can't remove command for extension '" ++ y ++ "'")
-               putStrLn "          It does not exist"
-       else putStrLn ("Removed command for extension '" ++ y ++ "'")
+       then putStrLn $ colorify yellow ("Can't remove command for extension '" ++ y ++ "'. It does not exist")
+       else putStrLn $ colorify green ("Removed command for extension '" ++ y ++ "'")
      removeExtensions extToComm ys
 
 
--- TODO add configuration file as argument
 -- TODO add fatal error message if write to configuration file goes wrong
 associateCommands :: [FilePath] -> [Property] -> String -> IO [String]
 associateCommands [] _ z      = return []
@@ -161,8 +160,9 @@ associateCommands (x:xs) ys z =
 
 createCommand :: String -> IO String
 createCommand xs = do putStrLn ("new extension '" ++ xs ++ "'")
-                      putStrLn "type: 'i' to ignore, 'c' to set command"
+                      putStrLn "type: 'i' to ignore, 'c' to set command, press enter without anything to skip"
                       queryCommand
+
 
 queryCommand :: IO String
 queryCommand = do input <- getLine
@@ -178,7 +178,7 @@ run (_:xs)        = run xs
 
 
 getCfgFilepath :: IO String
-getCfgFilepath = do home <- exitIfFailed (getEnv "HOME") "Could not get environment variable HOME"
+getCfgFilepath = do home <- exitIfFails (getEnv "HOME") "Could not get environment variable HOME"
                     return (home ++ "/.config/show.conf")
 
 
@@ -192,10 +192,10 @@ exitIf :: Bool -> IO a -> IO ()
 exitIf b x = when b $ do _ <- x; exitSuccess
 
 
-exitIfFailed :: IO a -> String -> IO a
-exitIfFailed f m = catch f ((\e -> do putStrLn ("An exception was caught: " ++ show e)
-                                      putStrLn ("FATAL ERROR: " ++ m)
-                                      exitFailure) :: SomeException -> IO a)
+exitIfFails :: IO a -> String -> IO a
+exitIfFails f m = catch f ((\e -> do putStrLn $ colorify red ("An exception was caught: " ++ show e)
+                                     putStrLn $ colorify red ("FATAL ERROR: " ++ m)
+                                     exitFailure) :: SomeException -> IO a)
 
 
 getFileFilterCondition :: Bool -> [String] -> (String -> Bool)
@@ -218,3 +218,18 @@ containsPattern (x:xs) y = case matchRegex x y of
 containsSubString :: [String] -> String -> Bool
 containsSubString [] _     = False
 containsSubString (x:xs) y = x `isInfixOf` y || containsSubString xs y
+
+green :: String
+green = "\x1b[32m"
+
+uncolor :: String
+uncolor = "\x1b[0m"
+
+red :: String
+red = "\x1b[31m"
+
+yellow :: String
+yellow = "\x1b[33m"
+
+colorify :: String -> String -> String
+colorify x y = x ++ y ++ uncolor
