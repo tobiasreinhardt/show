@@ -93,7 +93,7 @@ getNeedForArgument x xs = case lookup x xs of
 
 qualifyArgumentForOption :: Option -> String -> [OptionDefinition] -> MarshalledEntity
 qualifyArgumentForOption x y xs = case (getNeedForArgument x xs, y) of
-                                    (Compulsory, []) -> error "option needs argument"
+                                    (Compulsory, []) -> error "option needs an argument"
                                     (None, _:_)      -> error "option can't have an argument"
                                     (Optional u, []) -> OptionWithArgument x u
                                     (_, [])          -> OnlyOption x
