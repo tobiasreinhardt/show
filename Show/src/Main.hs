@@ -11,10 +11,6 @@
 --
 -----------------------------------------------------------------------------
 
--- TODO I don't remember why these two lines are here, but everything seems to work without them
---{-# LANGUAGE CPP             #-}
---{-# LANGUAGE TemplateHaskell #-}
-
 -- TODO Add a module describtion in every file
 -- WHAT
 -- WHY
@@ -47,6 +43,7 @@ d = Both 'd' "delete"
 p = Both 'p' "path"
 g = Both 'g' "regex"
 h = Both 'h' "help"
+l = Both 'l' "list"
 
 helpMessage :: String
 helpMessage="\
@@ -59,6 +56,8 @@ helpMessage="\
 \                    files are opened\n\
 \  -g, --regex       files are selected if their names matches\n\
 \                    user given POSIX regular expressions\n\
+\  -l, --list        lists the current commands specified\n\
+\                    for the file-extensions\n\
 \  -h, --help        print this help\n\
 \\n\
 \By default a file is selected if even one of the given\n\
@@ -69,7 +68,8 @@ definedOptions = [(r, None),
                   (d, Compulsory),
                   (p, Compulsory),
                   (g, None),
-                  (h, None)]
+                  (h, None),
+                  (l, None)]
 
 -- should commandToFileFormat be saved after each successfull modification ?
 -- commandToFileformat should newer fall into a state where it is unusable
@@ -78,20 +78,22 @@ type Extension = String
 
 --TODO Check if the program throws an error whenewer an argument is not defined
 
+
 main :: IO ()
 main = do marshalled <- marshalArguments definedOptions
           let showHelp            = isOptionFlagged h marshalled
-          when showHelp $ do putStrLn helpMessage
-                             exitSuccess
+          let listCommands        = isOptionFlagged l marshalled
           let workingDirectory    = fetchArgumentsOfOption p marshalled
           let isRecursive         = isOptionFlagged r marshalled
           let patterns            = fetchNonOptionArguments marshalled
           let isRegex             = isOptionFlagged g marshalled
           let fileFilterCondition = getFileFilterCondition isRegex patterns
           let extensionsBeRemoved = fetchArgumentsOfOption d marshalled
+          when showHelp $ do putStrLn helpMessage; exitSuccess
           cfgFilepath <- getCfgFilepath
           createCfgFileIfMissing cfgFilepath
           extToComm  <- fmap getDefaultSection (readConfiguration cfgFilepath)
+          when listCommands $ do printExtToComm extToComm; exitSuccess
           extToComm2 <- removeExtensions extToComm extensionsBeRemoved
           exitIf (null patterns) (putStrLn "No patterns given, exiting...")
           setWorkingDirectory workingDirectory
@@ -101,10 +103,20 @@ main = do marshalled <- marshalArguments definedOptions
           _ <- mapM system sysCalls
           return ()
 
+
 createCfgFileIfMissing :: String -> IO()
 createCfgFileIfMissing x =
   do fileExist <- doesFileExist x
      unless fileExist $ createCfgFile x
+
+
+printExtToComm :: [Property] -> IO ()
+printExtToComm []     = putStrLn ""
+printExtToComm ((x1,x2):xs) =
+  if null x2
+  then do putStrLn (x1 ++ " -> IGNORE"); printExtToComm xs
+  else do putStrLn (x1 ++ " -> " ++ x2 ++ " [filename]"); printExtToComm xs
+
 
 createCfgFile :: String -> IO()
 createCfgFile x =
@@ -114,6 +126,7 @@ createCfgFile x =
      hClose h
      putStrLn ("A new configuration file was created in\n" ++ x)
      return ()
+
 
 removeExtensions :: [Property] -> [Extension] -> IO [Property]
 removeExtensions xs [] = return xs
@@ -144,7 +157,7 @@ associateCommands (x:xs) ys z =
                               if null newCommand
                                 then associateCommands xs extToComm z
                                 else do otherCommands <- associateCommands xs extToComm z
-                                        return ((x ++ " " ++ newCommand ++ " &") : otherCommands)
+                                        return ((newCommand ++ " " ++ x ++ " &") : otherCommands)
 
 createCommand :: String -> IO String
 createCommand xs = do putStrLn ("new extension '" ++ xs ++ "'")
@@ -163,9 +176,11 @@ run []            = error ""
 run ((True, x):_) = x
 run (_:xs)        = run xs
 
+
 getCfgFilepath :: IO String
 getCfgFilepath = do home <- exitIfFailed (getEnv "HOME") "Could not get environment variable HOME"
                     return (home ++ "/.config/show.conf")
+
 
 getFilepaths ::  Bool -> (String -> Bool) -> IO [String]
 getFilepaths y f = if y
@@ -176,10 +191,12 @@ getFilepaths y f = if y
 exitIf :: Bool -> IO a -> IO ()
 exitIf b x = when b $ do _ <- x; exitSuccess
 
+
 exitIfFailed :: IO a -> String -> IO a
 exitIfFailed f m = catch f ((\e -> do putStrLn ("An exception was caught: " ++ show e)
                                       putStrLn ("FATAL ERROR: " ++ m)
                                       exitFailure) :: SomeException -> IO a)
+
 
 getFileFilterCondition :: Bool -> [String] -> (String -> Bool)
 getFileFilterCondition True ys = containsPattern (map mkRegex ys)
@@ -196,6 +213,7 @@ containsPattern [] _     = False
 containsPattern (x:xs) y = case matchRegex x y of
                              Just _ -> True
                              Nothing -> containsPattern xs y
+
 
 containsSubString :: [String] -> String -> Bool
 containsSubString [] _     = False
