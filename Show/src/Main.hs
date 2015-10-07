@@ -22,6 +22,7 @@
 -- MAIN IMPLEMENTATION IDEAS
 
 -- TODO Add accurate module dependecy versions in all cabal files
+-- TODO Add color to output messages
 
 module Main (
     main
@@ -92,11 +93,11 @@ main = do marshalled <- marshalArguments definedOptions
           createCfgFileIfMissing cfgFilepath
           extToComm  <- fmap getDefaultSection (readConfiguration cfgFilepath)
           extToComm2 <- removeExtensions extToComm extensionsBeRemoved
-          exitIf (null patterns) (putStrLn "no patterns given, exiting...")
+          exitIf (null patterns) (putStrLn "No patterns given, exiting...")
           setWorkingDirectory workingDirectory
           files      <- getFilepaths isRecursive fileFilterCondition
-          exitIf (null files) (putStrLn "no file matched the given patterns, exiting...")
-          sysCalls   <- associateCommands files extToComm2
+          exitIf (null files) (putStrLn "No file matched the given patterns, exiting...")
+          sysCalls   <- associateCommands files extToComm2 cfgFilepath
           _ <- mapM system sysCalls
           return ()
 
@@ -127,29 +128,27 @@ removeExtensions xs (y:ys) =
 
 -- TODO add configuration file as argument
 -- TODO add fatal error message if write to configuration file goes wrong
-associateCommands :: [FilePath] -> [Property] -> IO [String]
-associateCommands [] _      = return []
-associateCommands (x:xs) ys =
+associateCommands :: [FilePath] -> [Property] -> String -> IO [String]
+associateCommands [] _ z      = return []
+associateCommands (x:xs) ys z =
   case getFileExtension x of
-    Nothing -> associateCommands xs ys
+    Nothing -> associateCommands xs ys z
     Just u -> case lookup u ys of
                 Just v  -> do if null v
-                                then associateCommands xs ys
-                                else do otherCommands <- associateCommands xs ys
+                                then associateCommands xs ys z
+                                else do otherCommands <- associateCommands xs ys z
                                         return ((v ++ " " ++ x ++ " &") : otherCommands)
                 Nothing -> do newCommand <- createCommand u
                               let extToComm = (u, newCommand) : ys
-                              _ <- writeConfiguration "/home/tobias/show.conf" [("",extToComm)]
+                              _ <- writeConfiguration z [("",extToComm)]
                               if null newCommand
-                                then associateCommands xs extToComm
-                                else do otherCommands <- associateCommands xs extToComm
+                                then associateCommands xs extToComm z
+                                else do otherCommands <- associateCommands xs extToComm z
                                         return ((x ++ " " ++ newCommand ++ " &") : otherCommands)
-
-
 
 createCommand :: String -> IO String
 createCommand xs = do putStrLn ("new extension '" ++ xs ++ "'")
-                      putStrLn "type: 'i' for ignore, 'c' for command"
+                      putStrLn "type: 'i' to ignore, 'c' to set command"
                       queryCommand
 
 queryCommand :: IO String
