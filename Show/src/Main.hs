@@ -18,7 +18,6 @@
 -- MAIN IMPLEMENTATION IDEAS
 
 -- TODO Add accurate module dependecy versions in all cabal files
--- TODO Add color to output messages
 
 module Main (
     main
@@ -37,6 +36,8 @@ import           Text.Regex
 import           Data.Maybe
 import           System.IO (openFile, hClose, Handle, IOMode (WriteMode))
 import           Control.Exception
+
+-- TODO There is a problem opening files that have spaces in their names
 
 r = Both 'r' "recursive"
 d = Both 'd' "delete"
@@ -71,7 +72,6 @@ definedOptions = [(r, None),
                   (h, None),
                   (l, None)]
 
--- should commandToFileFormat be saved after each successfull modification ?
 -- commandToFileformat should newer fall into a state where it is unusable
 
 type Extension = String
@@ -93,6 +93,8 @@ main = do marshalled <- marshalArguments definedOptions
           extToComm  <- fmap getDefaultSection (readConfiguration cfgFilepath)
           when listCommands $ do printExtToComm extToComm; exitSuccess
           extToComm2 <- removeExtensions extToComm extensionsBeRemoved
+          let extensionRemoved = length extToComm2 < length extToComm
+          when extensionRemoved $ saveChanges extToComm2 cfgFilepath
           exitIf (null patterns) (putStrLn "No patterns given, exiting...")
           setWorkingDirectory workingDirectory
           files      <- getFilepaths isRecursive fileFilterCondition
@@ -102,7 +104,10 @@ main = do marshalled <- marshalArguments definedOptions
           return ()
 
 
-
+saveChanges :: [Property] -> String -> IO()
+saveChanges xs y = do exitIfFails (writeConfiguration y [("",xs)]) "FATAL ERROR: Could not save changes to configuration file"
+                      putStrLn $ colorify green "Changes saved succesfully"
+                      return ()
 
 
 createCfgFileIfMissing :: String -> IO()
@@ -112,7 +117,7 @@ createCfgFileIfMissing x =
 
 
 printExtToComm :: [Property] -> IO ()
-printExtToComm []     = putStrLn ""
+printExtToComm []           = putStrLn ""
 printExtToComm ((x1,x2):xs) =
   if null x2
   then do putStrLn (x1 ++ " -> IGNORE"); printExtToComm xs
@@ -128,7 +133,6 @@ createCfgFile x =
      putStrLn $ colorify green ("A new configuration file was created in\n" ++ x)
      return ()
 
--- TODO save the configuration after removing
 removeExtensions :: [Property] -> [Extension] -> IO [Property]
 removeExtensions xs [] = return xs
 removeExtensions xs (y:ys) =
@@ -139,20 +143,19 @@ removeExtensions xs (y:ys) =
      removeExtensions extToComm ys
 
 
--- TODO add fatal error message if write to configuration file goes wrong
 associateCommands :: [FilePath] -> [Property] -> String -> IO [String]
 associateCommands [] _ z      = return []
 associateCommands (x:xs) ys z =
   case getFileExtension x of
     Nothing -> associateCommands xs ys z
     Just u -> case lookup u ys of
-                Just v  -> do if null v
+                Just v  -> if null v
                                 then associateCommands xs ys z
                                 else do otherCommands <- associateCommands xs ys z
                                         return ((v ++ " " ++ x ++ " &") : otherCommands)
                 Nothing -> do newCommand <- createCommand u
                               let extToComm = (u, newCommand) : ys
-                              _ <- writeConfiguration z [("",extToComm)]
+                              saveChanges extToComm z
                               if null newCommand
                                 then associateCommands xs extToComm z
                                 else do otherCommands <- associateCommands xs extToComm z
@@ -198,14 +201,14 @@ exitIfFails f m = catch f ((\e -> do putStrLn $ colorify red ("An exception was
                                      exitFailure) :: SomeException -> IO a)
 
 
-getFileFilterCondition :: Bool -> [String] -> (String -> Bool)
+getFileFilterCondition :: Bool -> [String] -> String -> Bool
 getFileFilterCondition True ys = containsPattern (map mkRegex ys)
 getFileFilterCondition False ys = containsSubString ys
 
 
 setWorkingDirectory :: [String] -> IO ()
 setWorkingDirectory []     = return ()
-setWorkingDirectory (x:_) = setCurrentDirectory x
+setWorkingDirectory (x:_)  = setCurrentDirectory x
 
 
 containsPattern :: [Regex] -> String -> Bool
