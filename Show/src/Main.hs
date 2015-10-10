@@ -76,7 +76,7 @@ definedOptions = [(r, None),
 
 type Extension = String
 
-
+-- TODO make up new name for removeExtensions function
 main :: IO ()
 main = do marshalled <- marshalArguments definedOptions
           let showHelp            = isOptionFlagged h marshalled
@@ -99,9 +99,13 @@ main = do marshalled <- marshalArguments definedOptions
           setWorkingDirectory workingDirectory
           files      <- getFilepaths isRecursive fileFilterCondition
           exitIf (null files) (putStrLn "No file matched the given patterns, exiting...")
-          sysCalls   <- associateCommands files extToComm2 cfgFilepath
+          sysCalls <- associateCommands files extToComm2 cfgFilepath
           _ <- mapM system sysCalls
           return ()
+
+
+toPosixFilenameFormat :: String -> String
+toPosixFilenameFormat x = ""
 
 
 saveChanges :: [Property] -> String -> IO()
@@ -152,14 +156,14 @@ associateCommands (x:xs) ys z =
                 Just v  -> if null v
                                 then associateCommands xs ys z
                                 else do otherCommands <- associateCommands xs ys z
-                                        return ((v ++ " " ++ x ++ " &") : otherCommands)
+                                        return ((v ++ " \"" ++ x ++ "\" &") : otherCommands)
                 Nothing -> do newCommand <- createCommand u
                               let extToComm = (u, newCommand) : ys
                               saveChanges extToComm z
                               if null newCommand
                                 then associateCommands xs extToComm z
                                 else do otherCommands <- associateCommands xs extToComm z
-                                        return ((newCommand ++ " " ++ x ++ " &") : otherCommands)
+                                        return ((newCommand ++ " \"" ++ x ++ "\" &") : otherCommands)
 
 createCommand :: String -> IO String
 createCommand xs = do putStrLn ("new extension '" ++ xs ++ "'")
