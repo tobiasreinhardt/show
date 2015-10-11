@@ -37,8 +37,6 @@ import           Data.Maybe
 import           System.IO (openFile, hClose, Handle, IOMode (WriteMode))
 import           Control.Exception
 
--- TODO There is a problem opening files that have spaces in their names
-
 r = Both 'r' "recursive"
 d = Both 'd' "delete"
 p = Both 'p' "path"
@@ -49,7 +47,7 @@ l = Both 'l' "list"
 helpMessage :: String
 helpMessage="\
 \Usage: show [OPTION]... [PATTERN]...\n\
-\Open files with user predefined programs.\n\n\
+\Run user defined routine commands on different kind of files\n\n\
 \  -d, --delete      delete a defined command for a file\n\
 \                    extension\n\
 \  -r, --recursive   search dirctory recursively for files\n\
@@ -72,11 +70,9 @@ definedOptions = [(r, None),
                   (h, None),
                   (l, None)]
 
--- commandToFileformat should newer fall into a state where it is unusable
 
 type Extension = String
 
--- TODO make up new name for removeExtensions function
 main :: IO ()
 main = do marshalled <- marshalArguments definedOptions
           let showHelp            = isOptionFlagged h marshalled
@@ -92,7 +88,7 @@ main = do marshalled <- marshalArguments definedOptions
           createCfgFileIfMissing cfgFilepath
           extToComm  <- fmap getDefaultSection (readConfiguration cfgFilepath)
           when listCommands $ do printExtToComm extToComm; exitSuccess
-          extToComm2 <- removeExtensions extToComm extensionsBeRemoved
+          extToComm2 <- removeCommands extToComm extensionsBeRemoved
           let extensionRemoved = length extToComm2 < length extToComm
           when extensionRemoved $ saveChanges extToComm2 cfgFilepath
           exitIf (null patterns) (putStrLn "No patterns given, exiting...")
@@ -120,6 +116,7 @@ createCfgFileIfMissing x =
      unless fileExist $ createCfgFile x
 
 
+-- TODO Add function that flattens the output
 printExtToComm :: [Property] -> IO ()
 printExtToComm []           = putStrLn ""
 printExtToComm ((x1,x2):xs) =
@@ -137,14 +134,14 @@ createCfgFile x =
      putStrLn $ colorify green ("A new configuration file was created in\n" ++ x)
      return ()
 
-removeExtensions :: [Property] -> [Extension] -> IO [Property]
-removeExtensions xs [] = return xs
-removeExtensions xs (y:ys) =
+removeCommands :: [Property] -> [Extension] -> IO [Property]
+removeCommands xs [] = return xs
+removeCommands xs (y:ys) =
   do let extToComm = removeProperty y xs
      if length extToComm == length xs
        then putStrLn $ colorify yellow ("Can't remove command for extension '" ++ y ++ "'. It does not exist")
        else putStrLn $ colorify green ("Removed command for extension '" ++ y ++ "'")
-     removeExtensions extToComm ys
+     removeCommands extToComm ys
 
 
 associateCommands :: [FilePath] -> [Property] -> String -> IO [String]
@@ -165,16 +162,23 @@ associateCommands (x:xs) ys z =
                                 else do otherCommands <- associateCommands xs extToComm z
                                         return ((newCommand ++ " \"" ++ x ++ "\" &") : otherCommands)
 
+-- TODO Pressing just enter does not work
 createCommand :: String -> IO String
 createCommand xs = do putStrLn ("new extension '" ++ xs ++ "'")
-                      putStrLn "type: 'i' to ignore, 'c' to set command, press enter without anything to skip"
+                      putStrLn "type: 'i' to ignore, 'c' to set command, skip by press enter without anything"
                       queryCommand
+
+
+data OperationOnExtension = Ignore         |
+                            Skip           |
+                            Command String
 
 
 queryCommand :: IO String
 queryCommand = do input <- getLine
                   run [(input == "i", return ""),
                        (input == "c", do putStrLn "command to be executed:"; getLine),
+                       (input == "", getLine),
                        (True, queryCommand)]
 
 
