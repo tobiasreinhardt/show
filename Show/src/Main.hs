@@ -91,11 +91,12 @@ main = do marshalled <- marshalArguments definedOptions
           extToComm2 <- removeCommands extToComm extensionsBeRemoved
           let extensionRemoved = length extToComm2 < length extToComm
           when extensionRemoved $ saveChanges extToComm2 cfgFilepath
-          exitIf (null patterns) (putStrLn "No patterns given, exiting...")
+          exitIf (null patterns) (putStrLn "No patterns were given, exiting...")
           setWorkingDirectory workingDirectory
           files      <- getFilepaths isRecursive fileFilterCondition
-          exitIf (null files) (putStrLn "No file matched the given patterns, exiting...")
+          exitIf (null files) (putStrLn $ colorify yellow "No file matched the given patterns, exiting...")
           sysCalls <- associateCommands files extToComm2 cfgFilepath
+          putStrLn $ colorify green "READY"
           _ <- mapM system sysCalls
           return ()
 
@@ -155,15 +156,17 @@ associateCommands (x:xs) ys z =
                                 else do otherCommands <- associateCommands xs ys z
                                         return ((v ++ " \"" ++ x ++ "\" &") : otherCommands)
                 Nothing -> do newCommand <- createCommand u
-                              let extToComm = (u, newCommand) : ys
-                              saveChanges extToComm z
-                              if null newCommand
-                                then associateCommands xs extToComm z
-                                else do otherCommands <- associateCommands xs extToComm z
-                                        return ((newCommand ++ " \"" ++ x ++ "\" &") : otherCommands)
+                              case newCommand of
+                                Skip -> associateCommands xs ys z
+                                Ignore -> do let extToComm = (u, "") : ys
+                                             saveChanges extToComm z
+                                             associateCommands xs extToComm z
+                                Command s -> do let extToComm = (u, s) : ys
+                                                saveChanges extToComm z
+                                                otherCommands <- associateCommands xs extToComm z
+                                                return ((s ++ " \"" ++ x ++ "\" &") : otherCommands)
 
--- TODO Pressing just enter does not work
-createCommand :: String -> IO String
+createCommand :: String -> IO OperationOnExtension
 createCommand xs = do putStrLn ("new extension '" ++ xs ++ "'")
                       putStrLn "type: 'i' to ignore, 'c' to set command, skip by press enter without anything"
                       queryCommand
@@ -174,12 +177,12 @@ data OperationOnExtension = Ignore         |
                             Command String
 
 
-queryCommand :: IO String
+queryCommand :: IO OperationOnExtension
 queryCommand = do input <- getLine
-                  run [(input == "i", return ""),
-                       (input == "c", do putStrLn "command to be executed:"; getLine),
-                       (input == "", getLine),
-                       (True, queryCommand)]
+                  run [(input == "i", do putStrLn $ colorify green "extension is to be ignored"; return Ignore),
+                       (input == "c", do putStrLn "command to be executed:"; s <- getLine; return (Command s)),
+                       (input == "", do putStrLn $ colorify green "extension skipped"; return Skip),
+                       (True, do putStrLn $ colorify yellow "unknown act"; queryCommand)]
 
 
 run :: [(Bool, IO a)] -> IO a
