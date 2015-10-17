@@ -104,11 +104,22 @@ describtion = do
 
 
   it "Throws an error if property contains whitespace" $ do
-	(evaluate . force) (show $ decode "o p1=val1") `shouldThrow` anyErrorCall
-	(evaluate . force) (show $ decode "op1 =val1") `shouldThrow` anyErrorCall
-	(evaluate . force) (show $ decode "op1= val1") `shouldThrow` anyErrorCall
-	(evaluate . force) (show $ decode "op1=va l1") `shouldThrow` anyErrorCall
+  	(evaluate . force) (show $ decode "o p1=val1") `shouldThrow` anyErrorCall
+  	(evaluate . force) (show $ decode "op1 =val1") `shouldThrow` anyErrorCall
+  	(evaluate . force) (show $ decode "op1= val1") `shouldThrow` anyErrorCall
+  	(evaluate . force) (show $ decode "op1=va l1") `shouldThrow` anyErrorCall
 
 
   it "property contains more than one equal sign" $ do
-	(evaluate . force) (show $ decode "op1=val1=val2") `shouldThrow` anyErrorCall
+	  (evaluate . force) (show $ decode "op1=val1=val2") `shouldThrow` anyErrorCall
+
+  it "Can read directly from files" $ do
+    result <- readConfiguration "tests/material/example.ini"
+    let Just defaultSection = lookup "" result
+    let Just section1 = lookup "section1" result
+    let Just section2 = lookup "section2" result
+    (lookup "op1" defaultSection) `shouldBe` Just "arg1"
+    (lookup "op2" defaultSection) `shouldBe` Just "arg2"
+    (lookup "op3" section1) `shouldBe` Just "arg3"
+    (lookup "op4" section2) `shouldBe` Just "arg4"
+    (lookup "op5" section2) `shouldBe` Just "arg5"

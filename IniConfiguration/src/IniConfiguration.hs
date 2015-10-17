@@ -22,3 +22,5 @@ import Encoder
 import Decoder
 import Types
 import Manipulation
+
+-- TODO Add convenient function for fetching the defaul section

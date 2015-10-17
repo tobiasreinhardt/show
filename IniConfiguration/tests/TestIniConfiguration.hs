@@ -22,8 +22,6 @@ import           Test.Hspec (it, shouldBe)
 
 describtion = do
 
--- TODO Add tests for reading and wirting a file
-
   it "Can read INI configuration files" $ do
     True `shouldBe` True
 
