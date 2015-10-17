@@ -12,30 +12,23 @@
 -----------------------------------------------------------------------------
 
 -- TODO Add a module describtion in every file
--- WHAT
--- WHY
--- HOW
--- MAIN IMPLEMENTATION IDEAS
-
--- TODO Add accurate module dependecy versions in all cabal files
 
 module Main (
     main
 ) where
 
 import           CLIArguments
-import           Control.Monad
-import           Data.List
 import           DirectoryFiles
 import           IniConfiguration
+import           Control.Monad (when, unless)
+import           Data.List (isInfixOf)
 import           System.Directory (setCurrentDirectory, doesFileExist)
-import           System.Exit
-import           System.Process
-import           System.Environment
-import           Text.Regex
-import           Data.Maybe
+import           System.Exit (exitSuccess, exitFailure)
+import           System.Process (system)
+import           System.Environment (getEnv)
+import           Text.Regex (mkRegex, matchRegex, Regex)
 import           System.IO (openFile, hClose, Handle, IOMode (WriteMode))
-import           Control.Exception
+import           Control.Exception (catch, SomeException)
 
 r = Both 'r' "recursive"
 d = Both 'd' "delete"
@@ -60,7 +53,7 @@ helpMessage="\
 \  -h, --help        print this help\n\
 \\n\
 \By default a file is selected if even one of the given\n\
-\patterns is a substring of the filename.\n\n"
+\patterns is a substring of the filename\n\n"
 
 definedOptions :: [(Option, NeedForArgument)]
 definedOptions = [(r, None),

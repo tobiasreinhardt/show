@@ -11,10 +11,9 @@ author: Tobias Reinhardt
 data-dir: ""
 
 executable show
-    build-depends: QuickCheck -any, base -any, deepseq -any,
-                   CLIArguments -any, IniConfiguration -any,
-                   regex-compat -any, directory -any,
-                   containers -any, process -any
+    build-depends: base -any, CLIArguments -any,
+                   IniConfiguration -any, regex-compat -any,
+                   directory -any, process -any
     main-is: Main.hs
     buildable: True
     hs-source-dirs: src

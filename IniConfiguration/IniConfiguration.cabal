@@ -12,7 +12,7 @@ data-dir: ""
 
 
 library
-    build-depends: QuickCheck -any, base -any, deepseq -any,
+    build-depends: base -any, deepseq >= 1.2.0.0,
                    hspec -any, split -any
     exposed-modules: IniConfiguration
     exposed: True

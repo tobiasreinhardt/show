@@ -17,7 +17,7 @@ module Main (
 
 
 import qualified TestCLIArguments
-import Test.Hspec
+import Test.Hspec (hspec, describe)
 
 main :: IO ()
 main = hspec $ describe "CLIArguments" TestCLIArguments.describtion

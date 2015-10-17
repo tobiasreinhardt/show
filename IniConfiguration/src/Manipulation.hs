@@ -17,7 +17,7 @@ module Manipulation(
 	removeProperty
 )where
 
-import           Data.Maybe
+import           Data.Maybe (fromMaybe)
 import           Types
 
 getDefaultSection :: [Section] -> [Property]

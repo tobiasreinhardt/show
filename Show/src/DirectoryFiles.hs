@@ -18,7 +18,7 @@ module DirectoryFiles (
 ) where
 
 import System.Directory (getDirectoryContents, doesFileExist, doesDirectoryExist)
-import Data.List
+import Data.List (delete, elemIndices)
 
 type DirectoryPath = String
 

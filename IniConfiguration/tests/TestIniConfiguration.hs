@@ -17,7 +17,7 @@ module TestIniConfiguration (
 
 import           Control.DeepSeq   (force)
 import           Control.Exception (evaluate)
-import           Test.Hspec
+import           Test.Hspec (it, shouldBe)
 
 
 describtion = do

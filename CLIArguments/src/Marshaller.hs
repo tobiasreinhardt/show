@@ -21,7 +21,7 @@ module Marshaller (
 ) where
 
 
-import           Data.List.Split
+import           Data.List.Split (splitOn)
 import           System.Environment
 
 data NeedForArgument = Optional String | Compulsory | None

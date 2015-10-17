@@ -16,7 +16,7 @@ module Main (
 ) where
 
 
-import           Test.Hspec
+import           Test.Hspec (hspec, describe)
 import qualified TestDecoder
 import qualified TestEncoder
 import qualified TestIniConfiguration

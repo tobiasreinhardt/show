@@ -18,7 +18,7 @@ module TestCLIArguments (
 import           CLIArguments
 import           Control.DeepSeq   (force)
 import           Control.Exception (evaluate)
-import           Test.Hspec
+import           Test.Hspec (it, shouldBe, shouldThrow, anyErrorCall)
 
 
 options :: [(Option, NeedForArgument)]

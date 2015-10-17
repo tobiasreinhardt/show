@@ -16,7 +16,7 @@ module Encoder(
   writeConfiguration
 )where
 
-import           Data.List
+import           Data.List (intercalate)
 import           Types
 
 writeConfiguration :: FilePath -> [Section] -> IO [Section]
